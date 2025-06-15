@@ -2,7 +2,6 @@
 const {JSDOM} = require('jsdom');
 
 async function crawlPage(baseURL,currentURL,pages) {
-   
 
     const baseURLObject = new URL(baseURL);
     const currentURLObject = new URL(currentURL);
