@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require('path')
 const os = require('os')
+
+
 function printReport(pages)
 {
     console.log(`==========`);
@@ -31,9 +33,8 @@ function escapeCsvValue(value) {
 function saveToCSV(pages) {
     const rows = [['URL', 'Count']]; //2d array
     for(const url in pages) {
-        rows.push([url,pages[url]]);
+        rows.push([url,pages[url]]);    
     }
-
 
     const csvContent = rows.map(row => row.map(escapeCsvValue).join(',')).join('\n');
     const desktopPath = path.join(os.homedir(), 'Desktop', 'crawResults.csv');

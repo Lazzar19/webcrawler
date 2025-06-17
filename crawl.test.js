@@ -1,6 +1,8 @@
 const { normalize } = require('path');
-const {normalizeURL,getURLs} = require('./crawl.js');
+const {normalizeURL,getURLs, crawlPage} = require('./crawl.js');
 const {test,expect} = require("@jest/globals");
+
+global.fetch = jest.fn();
 
 test('normalizeURL strip protocol https', () => {
     const input = 'https://blog.boot.dev/path';
@@ -110,5 +112,61 @@ test('getURLsfromHTML invalid urls', () => {
     
 })
 
+test("cyclic pages ", async () => {
+   const inputA = `
+    <html>
+        <body>
+            <a href="/pageB"> 
+                Go to page B
+            </a>
+        </body>
+    </html>
+   
+   `;
+
+   const inputB = `
+    <html>
+        <body>
+            <a href="/pageA">
+                Go to page A
+            </a>
+        </body>
+   
+    </html>
+   `
+    
+
+    fetch.mockImplementation((url) => {
+        if(url == "https://example.com/pageA") {
+            return Promise.resolve({
+                status:200,
+                headers: {
+                    get: () => 'text/html'
+                },
+                text: () => Promise.resolve(htmlA)
+            });
+        }
+
+        if(url == "https://example.com/pageB") {
+            return Promise.resolve({
+                status:200,
+                headers: {
+                    get: () => 'text/html'
+                },
+                text: () => Promise.resolve(htmlB)
+            });
+        }
+
+        return Promise.reject(new Error('Unknown page'))
+
+    })
+
+    const pages = await crawlPage("https://example.com", 'https://example.com/pageA', {});
+    expect(pages).toHaveProperty("example.com/pageA");
+    expect(pages).toHaveProperty('example.com/pageB');
+    expect(pages['example.com/pageA']).toBe(1);
+    expect(pages['example.com/pageB']).toBe(1);
+
+})
 
 
