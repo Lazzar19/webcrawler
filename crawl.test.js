@@ -141,9 +141,9 @@ test("cyclic pages ", async () => {
             return Promise.resolve({
                 status:200,
                 headers: {
-                    get: () => 'text/html'
+                    get: () => 'text/html'  //same as content-type: text/html
                 },
-                text: () => Promise.resolve(htmlA)
+                text: () => Promise.resolve(htmlA) // same as response.text() => return html 
             });
         }
 
@@ -170,3 +170,82 @@ test("cyclic pages ", async () => {
 })
 
 
+test("non-html content types", async () => {
+
+    const notHtmlTypes = [
+        'application/json',
+        'image/png',
+        'application/pdf',
+        'text/css',
+        'application/javascript',
+
+    ];
+
+
+    for(let contentType of notHtmlTypes) {
+        fetch.mockImplementation(() => {
+
+            Promise.resolve( {
+                status:200,
+                headers: {
+                    get: contentType
+                },
+                text: () => Promise.resolve('')
+            })
+
+        })
+    };
+
+    const pages = crawlPage('https://example.com', 'https://example.com/file', {});
+    expect(pages).toEqual( {} );
+})
+
+
+test(' text/html test with charset param', async () => {
+    fetch.mockImplementation( () => {
+        Promise.resolve({
+            status: 200,
+            headers: {
+                get: () => 'text/html; charset=UTF-8'
+            },
+            text: () => Promise.resolve('<html></html>')
+        })
+    })
+
+    const pages = crawlPage('https://example.com', 'https://example.com', {});
+    expect(pages).toHaveProperty('example.com')
+
+})
+
+test('ignore external links ', async() => {
+
+    const html = `
+    <html>
+        <body>
+
+            <a href="https://external.com/page"> External pegae </a>
+
+        </body>
+    </html>
+    
+    
+    `;
+
+    fetch.mockImplementation( (url) => {
+        if(url == 'https://example.com')
+        Promise.resolve({
+            status:200,
+            headers: {
+                get: () => 'text/html'
+            },
+            text: () => Promise.resolve(html)
+        })
+
+        return Promise.reject(new Error('External site, fetch error'));
+    })
+
+    const pages = crawlPage('https://example.com', 'https://example.com', {});
+    expect(pages).toHaveProperty('example.com');
+    expect(Object.keys(pages).length).toBe(1); // just one page, external link being ignored
+
+})
