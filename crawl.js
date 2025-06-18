@@ -1,7 +1,7 @@
 
 const {JSDOM} = require('jsdom');
 
-async function crawlPage(baseURL,currentURL,pages) {
+async function crawlPage(baseURL,currentURL,pages,currentDepth = 0 ,maxDepth = 2) {
 
     const baseURLObject = new URL(baseURL);
     const currentURLObject = new URL(currentURL);
@@ -17,6 +17,10 @@ async function crawlPage(baseURL,currentURL,pages) {
 
     pages[normalizedCurrentURL] = 1;
 
+    if(currentDepth >= maxDepth) {
+        return pages;
+    }
+
     console.log(`crawling page: ${currentURL}`);
     try {
         const response = await fetch(currentURL);
@@ -27,7 +31,7 @@ async function crawlPage(baseURL,currentURL,pages) {
         }
 
         const contentType = response.headers.get("content-type");
-        if(!contentType.includes('text/html'))
+        if(!contentType.includes('text/html') || !contentType)
         {
             console.log(`non html response, content-type: ${contentType}, on page ${currentURL}`);
             return pages;
@@ -36,11 +40,12 @@ async function crawlPage(baseURL,currentURL,pages) {
         const htmlBody =  await response.text();
         const nextURLs = getURLs(htmlBody,baseURL);
         for(const nextURL of nextURLs) {
-            pages = await crawlPage(baseURL,nextURL,pages);
+            pages = await crawlPage(baseURL,nextURL,pages,currentDepth + 1, maxDepth);
         }
 
     } catch(err) {
         console.log(`error in fetch: ${err.message}, on page ${currentURL}`)
+        return pages;
     }
 
     return pages;
@@ -54,10 +59,14 @@ function getURLs(htmlBody,baseURL) {
     const linkElements = dom.window.document.querySelectorAll("a");
     for(const link of linkElements) {
 
-        if(link.href.slice(0,1) == '/') { // first character /
+        if(!link.href) {
+            continue;
+        };
+
+        if(link.href.slice(0,1) === '/') { // first character /
             //relative
             try{
-                const urlObject = new URL( `${baseURL}${link.href}`);
+                const urlObject = new URL(`${baseURL}${link.href}`);
                 urls.push(urlObject.href);
             } catch (err) {
                 console.log(`error with relative url: ${err.message}`)
@@ -71,7 +80,7 @@ function getURLs(htmlBody,baseURL) {
                 const urlObject = new URL(link.href);
                 urls.push(urlObject.href);
            } catch (err) {
-            console.log(`erro with absolute url: ${err.message}`);
+                console.log(`erro with absolute url: ${err.message}`);
            }
         }
     }

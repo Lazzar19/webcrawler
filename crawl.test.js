@@ -4,6 +4,10 @@ const {test,expect} = require("@jest/globals");
 
 global.fetch = jest.fn();
 
+beforeEach(() => {
+    fetch.mockClear();
+});
+
 test('normalizeURL strip protocol https', () => {
     const input = 'https://blog.boot.dev/path';
     const actual = normalizeURL(input);
@@ -112,6 +116,52 @@ test('getURLsfromHTML invalid urls', () => {
     
 })
 
+
+test('getURLsFromHTML handles html with 0 links', () => {
+    const inputBody = `
+        <html>
+            <body>  
+                <h1> Some random text <h1>
+            <body>
+        </html>
+    `;
+    const inputURL = 'https://example.com';
+    const actual = getURLs(inputBody,inputURL);
+    const expected = [];
+    expect(actual).toEqual(expected);
+})
+
+
+test('getURLsfromHTML handles empty HTML', () => {
+    const inputBody = ``;
+    const inputURL = 'https://example.com';
+    const actual = getURLs(inputBody,inputURL);
+    const expected = [];  //because of empty html
+    expect(actual).toEqual(expected);
+})
+
+test('getURLsfromHTML malformed HTML', () => {
+
+    const inputBody = `
+        <html>
+            <body>
+                <a href="/page1"> Unclosed link
+                <a href = /page2> No qoutes </a>
+                <a href = ""> Empty href </a>
+                <a href = "   "> whitespace in href </a>    
+
+            </body>
+        </html>
+    `;
+
+    const inputURL = 'https://example.com';
+    const actual = getURLs(inputBody,inputURL);
+    const expected = [];
+    expect(actual).toEqual(expected);
+
+})
+
+
 test("cyclic pages ", async () => {
    const inputA = `
     <html>
@@ -137,23 +187,23 @@ test("cyclic pages ", async () => {
     
 
     fetch.mockImplementation((url) => {
-        if(url == "https://example.com/pageA") {
+        if(url === "https://example.com/pageA") {
             return Promise.resolve({
                 status:200,
                 headers: {
                     get: () => 'text/html'  //same as content-type: text/html
                 },
-                text: () => Promise.resolve(htmlA) // same as response.text() => return html 
+                text: () => Promise.resolve(inputA) // same as response.text() => return html 
             });
         }
 
-        if(url == "https://example.com/pageB") {
+        if(url === "https://example.com/pageB") {
             return Promise.resolve({
                 status:200,
                 headers: {
                     get: () => 'text/html'
                 },
-                text: () => Promise.resolve(htmlB)
+                text: () => Promise.resolve(inputB)
             });
         }
 
@@ -161,7 +211,7 @@ test("cyclic pages ", async () => {
 
     })
 
-    const pages = await crawlPage("https://example.com", 'https://example.com/pageA', {});
+    const pages = await crawlPage("https://example.com", 'https://example.com/pageA', {},0,3);
     expect(pages).toHaveProperty("example.com/pageA");
     expect(pages).toHaveProperty('example.com/pageB');
     expect(pages['example.com/pageA']).toBe(1);
@@ -196,14 +246,14 @@ test("non-html content types", async () => {
         })
     };
 
-    const pages = crawlPage('https://example.com', 'https://example.com/file', {});
+    const pages = crawlPage('https://example.com', 'https://example.com/file', {},0,3);
     expect(pages).toEqual( {} );
 })
 
 
 test(' text/html test with charset param', async () => {
     fetch.mockImplementation( () => {
-        Promise.resolve({
+        return Promise.resolve({
             status: 200,
             headers: {
                 get: () => 'text/html; charset=UTF-8'
@@ -212,7 +262,7 @@ test(' text/html test with charset param', async () => {
         })
     })
 
-    const pages = crawlPage('https://example.com', 'https://example.com', {});
+    const pages = await crawlPage('https://example.com', 'https://example.com', {}, 0, 3);
     expect(pages).toHaveProperty('example.com')
 
 })
@@ -232,8 +282,8 @@ test('ignore external links ', async() => {
     `;
 
     fetch.mockImplementation( (url) => {
-        if(url == 'https://example.com')
-        Promise.resolve({
+        if(url === 'https://example.com')
+        return Promise.resolve({
             status:200,
             headers: {
                 get: () => 'text/html'
@@ -244,8 +294,39 @@ test('ignore external links ', async() => {
         return Promise.reject(new Error('External site, fetch error'));
     })
 
-    const pages = crawlPage('https://example.com', 'https://example.com', {});
+    const pages = await crawlPage('https://example.com', 'https://example.com', {}, 0, 3);
     expect(pages).toHaveProperty('example.com');
     expect(Object.keys(pages).length).toBe(1); // just one page, external link being ignored
 
 })
+
+
+test('depth limiting', async () => {
+
+    const html = `
+        <html>
+            <body>
+                <a href ="/page2"> Page 2 <a>
+            </body>
+        </html>
+    `;
+
+    fetch.mockImplementation( () => {
+        return Promise.resolve( {
+            status: 200,
+            headers: {
+                get: () => 'text/html'
+            },
+            text: () => Promise.resolve(html)
+        })
+    })
+
+    const pages = await crawlPage('https://example.com', "https://example.com", {}, 0, 3);
+    expect(pages).toHaveProperty('example.com');
+    expect(pages).not.toHaveProperty('example.com/page2');
+    expect(Object.keys(pages).length).toBe(1);
+
+})
+
+
+
