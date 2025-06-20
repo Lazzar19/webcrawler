@@ -220,35 +220,27 @@ test("cyclic pages ", async () => {
 })
 
 
-test("non-html content types", async () => {
+test.each([
+    'application/json',
+    'application/javascript',
+    'image/png',
+    'application/pdf',
+    'text/css'
+])('ignore non HTML types', async (contentType) => {
+    fetch.mockImplementation( () => {
+        return Promise.resolve({
+            status:200,
+            headers: {
+                get: () => contentType
+            },
+            text: () => Promise.resolve('')
+        })  
+    })
 
-    const notHtmlTypes = [
-        'application/json',
-        'image/png',
-        'application/pdf',
-        'text/css',
-        'application/javascript',
+    const pages = crawlPage('https://example.com', 'https://example.com/file',{},0,3);
+    expect(pages).toEqual({});
 
-    ];
-
-
-    for(let contentType of notHtmlTypes) {
-        fetch.mockImplementation(() => {
-
-            Promise.resolve( {
-                status:200,
-                headers: {
-                    get: contentType
-                },
-                text: () => Promise.resolve('')
-            })
-
-        })
-    };
-
-    const pages = crawlPage('https://example.com', 'https://example.com/file', {},0,3);
-    expect(pages).toEqual( {} );
-})
+});
 
 
 test(' text/html test with charset param', async () => {
@@ -306,7 +298,7 @@ test('depth limiting', async () => {
     const html = `
         <html>
             <body>
-                <a href ="/page2"> Page 2 <a>
+                <a href ="/page2"> Page 2 </a>
             </body>
         </html>
     `;

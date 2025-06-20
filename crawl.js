@@ -1,5 +1,7 @@
 
 const {JSDOM} = require('jsdom');
+const pLimit = require('p-limit');
+const limit = pLimit(5);
 
 async function crawlPage(baseURL,currentURL,pages,currentDepth = 0 ,maxDepth = 2) {
 
@@ -39,9 +41,13 @@ async function crawlPage(baseURL,currentURL,pages,currentDepth = 0 ,maxDepth = 2
         //parse to html
         const htmlBody =  await response.text();
         const nextURLs = getURLs(htmlBody,baseURL);
-        for(const nextURL of nextURLs) {
-            pages = await crawlPage(baseURL,nextURL,pages,currentDepth + 1, maxDepth);
-        }
+        
+        const crawlPromises = nextURLs.map(url => {
+            limit(() => crawlPage(baseURL,url,pages,currentDepth + 1, maxDepth))
+        });
+
+        await Promise.all(crawlPromises);
+        
 
     } catch(err) {
         console.log(`error in fetch: ${err.message}, on page ${currentURL}`)
