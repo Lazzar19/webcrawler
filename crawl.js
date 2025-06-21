@@ -3,7 +3,7 @@ const {JSDOM} = require('jsdom');
 const pLimit = require('p-limit');
 const limit = pLimit(5);
 
-async function crawlPage(baseURL,currentURL,pages,currentDepth = 0 ,maxDepth = 2) {
+async function crawlPage(baseURL,currentURL,pages, currentDepth = 0 ,maxDepth = 2, maxPages = Infinity ) {
 
     const baseURLObject = new URL(baseURL);
     const currentURLObject = new URL(currentURL);
@@ -19,6 +19,10 @@ async function crawlPage(baseURL,currentURL,pages,currentDepth = 0 ,maxDepth = 2
 
     pages[normalizedCurrentURL] = 1;
 
+    if(Object.keys(pages).length >= maxPages) {
+        return pages;
+        }
+        
     if(currentDepth >= maxDepth) {
         return pages;
     }
@@ -41,9 +45,10 @@ async function crawlPage(baseURL,currentURL,pages,currentDepth = 0 ,maxDepth = 2
         //parse to html
         const htmlBody =  await response.text();
         const nextURLs = getURLs(htmlBody,baseURL);
+
         
         const crawlPromises = nextURLs.map(url => {
-            limit(() => crawlPage(baseURL,url,pages,currentDepth + 1, maxDepth))
+            limit(() => crawlPage(baseURL,url,pages,currentDepth + 1, maxDepth,maxPages))
         });
 
         await Promise.all(crawlPromises);
@@ -99,7 +104,7 @@ function normalizeURL(urlString) {
     const hostPath =  `${urlObject.hostname}${urlObject.pathname}`;
 
     if(hostPath.length > 0 && hostPath.slice(-1) == '/') {
-        return hostPath.slice(0,-1); // vraca substring od prvog do poslednjeg karaktera(bez poslednjeg)
+        return hostPath.slice(0,-1); // return substring from first to last char
     }
     return hostPath;
 };
