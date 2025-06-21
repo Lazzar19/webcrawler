@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "jsdom": "^26.1.0",
-    "p-limit": "^6.2.0"
+    "p-limit": "^6.2.0",
+    "robots-parser": "^3.0.1"
   }
 }
