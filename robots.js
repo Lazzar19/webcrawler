@@ -1,5 +1,5 @@
-const https = require("https");
-const http = require('http');
+
+const { timeStamp } = require("console");
 const { URL } = require("url");
 
 class RobotsHandler {
@@ -24,45 +24,41 @@ class RobotsHandler {
       }
     }
 
-    return new Promise((resolve, reject) => {
-      const protocol = robotsURL.startsWith('https:') ? https : http;
+    try {
 
-      const request = protocol.get(robotsURL, {
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'MyCrawlerBot/1.0'
-        }
-      }, (response) => {
-        let data = '';
-        response.setEncoding('utf8'); // ensure chunks are strings
+        const controller = new AbortController();
+        const timeout = setTimeout( () => controller.abort(), 10000);
+        
 
-        response.on('data', chunk => data += chunk);
-        response.on('end', () => {
-          if (response.statusCode === 200) {
-            this.cache.set(baseURL, {
-              content: data,
-              timestamp: Date.now()
-            });
-            resolve(data);
-          } else {
-            resolve(''); // not 200 -> treat as missing
-          }
+        const response = await fetch(robotsURL, {
+          method: 'GET',
+          headers: {'User-Agent': "MyCrawlerBot/1.0"},
+          signal: controller.signal,
         });
-      });
 
-      request.on('error', (error) => {
-        console.warn(`Failed to download robots.txt from ${baseURL}:`, error.message);
-        resolve('');
-      });
+        clearTimeout();
 
-      request.on('timeout', () => {
-        request.destroy();
-        console.warn(`Timeout in downloading robots.txt from ${baseURL}`);
-        resolve('');
-      });
-    });
+        if(response.status === 200) {
+          const data = response.text();
+          this.cache.set(robotsURL, {
+            content:data,
+            timestamp: Date.now()
+          });
+          return data;
+        } else {
+          return ''; // no robots.txt file
+        }
+
+    } catch (error){ 
+        console.warn(`Failed to fetch robots.txt from ${baseURL}`,error.message);
+        return '';
+    }
   }
 }
+
+
+
+
 
 module.exports = {
   RobotsHandler
