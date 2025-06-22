@@ -54,7 +54,104 @@ class RobotsHandler {
         return '';
     }
   }
+
+
+  /**
+   * @param {string} robotsContent - robots.txt body
+   * @returns {Map<string, Object>} - user-agent map
+   */
+  parseRobotsTxt = (robotsContent) => {
+    const lines = robotsContent.split('\n');
+    const agentRules = new Map();
+
+    let currentUserAgents = [];
+    let currentRules = {
+      disallow: [],
+      allow: [],
+      crawlDelay: null,
+      sitemap: []
+    };
+
+    for (let line of lines) {
+      line = line.trim();
+
+      if (!line || line.startsWith('#')) continue;
+
+      const [rawKey, ...rest] = line.split(':');
+      if (!rawKey || rest.length === 0) continue;
+
+      const key = rawKey.trim().toLowerCase();
+      const value = rest.join(':').trim();
+
+      switch (key) {
+        case 'user-agent':
+          if (currentUserAgents.length) {
+            currentUserAgents.forEach(agent => {
+              if (!agentRules.has(agent)) {
+                agentRules.set(agent, { ...currentRules });
+              } else {
+                const existing = agentRules.get(agent);
+                existing.disallow.push(...currentRules.disallow);
+                existing.allow.push(...currentRules.allow);
+                if (currentRules.crawlDelay !== null) existing.crawlDelay = currentRules.crawlDelay;
+                if (currentRules.sitemap.length) existing.sitemap.push(...currentRules.sitemap);
+              }
+            });
+          }
+
+          currentUserAgents = [value.toLowerCase()];
+          currentRules = {
+            disallow: [],
+            allow: [],
+            crawlDelay: null,
+            sitemap: []
+          };
+          break;
+
+        case 'disallow':
+          currentRules.disallow.push(value);
+          break;
+
+        case 'allow':
+          currentRules.allow.push(value);
+          break;
+
+        case 'crawl-delay':
+          currentRules.crawlDelay = parseFloat(value);
+          break;
+
+        case 'sitemap':
+          currentRules.sitemap.push(value);
+          break;
+
+        default:
+          break;
+      }
+    }
+
+    if (currentUserAgents.length) {
+      currentUserAgents.forEach(agent => {
+        if (!agentRules.has(agent)) {
+          agentRules.set(agent, { ...currentRules });
+        } else {
+          const existing = agentRules.get(agent);
+          existing.disallow.push(...currentRules.disallow);
+          existing.allow.push(...currentRules.allow);
+          if (currentRules.crawlDelay !== null) existing.crawlDelay = currentRules.crawlDelay;
+          if (currentRules.sitemap.length) existing.sitemap.push(...currentRules.sitemap);
+        }
+      });
+    }
+
+    return agentRules;
+  }
 }
+
+
+
+
+
+
 
 
 
