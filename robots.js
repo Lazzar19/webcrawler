@@ -147,7 +147,44 @@ class RobotsHandler {
 
     return agentRules;
   }
+
+   getRulesFromAgent = (userAgent,parsedRobotsTxt) => {
+      const agents = parsedRobotsTxt.agents;
+      const agentKey = userAgent.toLowerCase();  // GoogleBot == googlebot
+
+      // looking for rules for that exact agent, for example googlebot
+      if(agents.has(agentKey)) {
+        return agents.get(agentKey);
+      }
+
+      // example for 'googlebot/2.1', we have googlebot so agentKey.includes(key) will return the true
+      for(const [key,rules] of agents.entries()) {
+        if(key !== '*' && agentKey.includes(key)) {
+          return rules;
+        }
+      }
+
+      // rules for all agents
+      if(agents.has('*')) return agents.get('*');
+
+
+      return {
+        disallow: [],
+        allow: ['/'], // all is allowed because there is no disallow rule
+        crawlDelay: null, //crawl can start instantly
+        sitemap: []
+      };
+  };
+
+
+
+
 }
+
+
+
+
+
 
 module.exports = {
   RobotsHandler
