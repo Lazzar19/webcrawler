@@ -85,11 +85,13 @@ class RobotsHandler {
 
       switch (key) {
         case 'user-agent':
+          //saving previous user agents/agent rules
           if (currentUserAgents.length) {
             currentUserAgents.forEach(agent => {
               if (!agentRules.has(agent)) {
                 agentRules.set(agent, { ...currentRules });
               } else {
+                //merge rules if they already exist
                 const existing = agentRules.get(agent);
                 existing.disallow.push(...currentRules.disallow);
                 existing.allow.push(...currentRules.allow);
@@ -98,7 +100,7 @@ class RobotsHandler {
               }
             });
           }
-
+          //reset for new users
           currentUserAgents = [value.toLowerCase()];
           currentRules = {
             disallow: [],
@@ -128,7 +130,7 @@ class RobotsHandler {
           break;
       }
     }
-
+    // this code is repeated for the last user agent
     if (currentUserAgents.length) {
       currentUserAgents.forEach(agent => {
         if (!agentRules.has(agent)) {
