@@ -96,7 +96,7 @@ test('use correct protocol from URL (http)', async () => {
 
 test('no re-fetch if cache is still valid', async () => {
     const cachedContent = 'User-Agent: *\n Disalled: /cached';
-    hander.cache.set('https://cachetest.com', {
+    handler.cache.set('https://cachetest.com', {
         content: cachedContent,
         timestamp: Date.now() 
     })
@@ -111,8 +111,8 @@ test('no re-fetch if cache is still valid', async () => {
 test('successfull parsing simple user-agent block', () => {
     let content = `
         User-agent: *
-        Disallow: /admin
-        Allow: /pablic
+        Disallow: /admin/
+        Allow: /pablic/
         Crawl-delay: 10
     
     `;
@@ -129,11 +129,11 @@ test('successfull parsing simple user-agent block', () => {
 test('successfull parsing more than 1 user-agent block', () => {
     let content = `
         User-agent: googlebot
-        Disallow: /private
+        Disallow: /private/
 
 
         User-agent: bingbot
-        Disallow: /secret
+        Disallow: /secret/
         Crawl-delay: 5
     `
 
@@ -152,7 +152,7 @@ test("sitemap parsing", () => {
     let content = `
         Sitemap: https://example.com/sitemap.xml
         User-agent: *
-        Disallow: /tmp
+        Disallow: /tmp/
     `;
 
     const parsed = handler.parseRobotsTxt(content);
@@ -164,8 +164,8 @@ test("sitemap parsing", () => {
 test('malformed/unknown directives', () => {
     const content = `
         User-agent: *
-        Disallow: /admin
-        Allow: /public
+        Disallow: /admin/
+        Allow: /public/
         Foo: invalid
         Crawl-delay: 5
     `;
@@ -184,9 +184,9 @@ test('ignores comments and empty lines in file', () => {
         # some text
         User-agent: *
 
-        Disallow: /admin
+        Disallow: /admin/
         # other text
-        Allow: /public
+        Allow: /public/
     `;
 
     const parsed = handler.parseRobotsTxt(content);
@@ -198,7 +198,7 @@ test('multiple agents in one block', () => {
     const content = `
         User-agent: googlebot
         User-agent: bingbot
-        Disallow: /admin
+        Disallow: /admin/
     
     `;
 
@@ -211,7 +211,7 @@ test('multiple agents in one block', () => {
 test('fallback to wildcard rules if agents can not be found', () => {
     const content = `
         User-agent: *
-        Disallow: /block
+        Disallow: /block/
     `;
 
     const parsed = handler.parseRobotsTxt(content);
@@ -222,7 +222,7 @@ test('fallback to wildcard rules if agents can not be found', () => {
 test('crawlDelay is decimal number', () => {
     const content = `
         User-agent: *
-        Disallow: /block
+        Disallow: /block/
         Crawl-delay: 2.2
     `;
 
@@ -244,8 +244,96 @@ test('disallow field being empty', () => {
 test('directive with extra colons', () => {
     const content = `
         User-agent: *
-        Disallow: /path:with:colon
+        Disallow: /path:with:colon/
     `;
     const parsed = handler.parseRobotsTxt(content);
     expect(parsed.agents.get('*').disallow).toEqual(['/path:with:colon']);
+})
+
+
+test('Case sensitive, format to lowercase', () => {
+    const content = `
+        User-agent: GoogleBot
+        Disallow: /admin/
+
+        User-agent: BingBot
+        Disallow: /private/
+    
+    `;
+
+    const parsed = handler.parseRobotsTxt(content);
+    expect(parsed.has('googlebot')).toBe(true);
+    expect(parsed.has('bingbot')).toBe(true);
+    expect(parsed.has('GoogleBot')).toBe(true);
+    expect(parsed.has('BingBot')).toBe(true);
+
+})
+
+test('multiple rules', () => {
+    const content = `
+        User-agent: multibot
+        Disallow: /path1/
+        Disallow: /path2/
+        Allow: /allowed1/
+        Allow: /allowed2/
+        Sitemap: https://example.com/sitemap.xml
+    `;
+
+    const parsed = handler.parseRobotsTxt(content);
+    const rules = parsed.get('multibot')
+    expect(rules.disallow).toEqual(['/path1/', '/path2/']);
+    expect(rules.allow).toEqual(['/allowed1/', '/allowed2/']);
+    expect(rules.sitemap).toEqual(['https://example.com/sitemap.xml']);
+
+})
+
+test('empty robots.txt file', () => {
+    const content = ``;
+    const parsed = handler.parseRobotsTxt(content);
+    expect(parsed.size).toBe(0)
+})
+
+test('typical real-life example of parsing robots.txt file', () => {
+    const content = `
+        User-agent: *
+        Disallow: /admin/
+        Disallow: /private/
+        Disallow: /tmp/
+        Allow: /public/
+        Crawl-delay: 2
+
+        User-agent: Googlebot
+        Disallow: /admin/
+        Allow: /
+        Crawl-delay: 0.5
+
+        User-agent: BingBot
+        Disallow: /admin/
+        Disallow: /search/
+        Crawl-Delay: 2
+
+        Sitemap: https://example.com/sitemap.xml
+    `;
+
+    const parsed = handler.parseRobotsTxt(content);
+    expect(parsed.size).toBe(3);
+
+    const wildCard = parsed.get('*');
+    expect(wildCard.disallow).toEqual(['/admin/', '/private/','/tmp/']);
+    expect(wildCard.allow).toEqual(['/public/']);
+    expect(wildCard.crawlDelay).toBe(2);
+    expect(wildCard.sitemap).toEqual(['https://example.com/sitemap.xml']);
+
+
+    const googleBotParsed = parsed.get('googlebot');
+    expect(googleBotParsed.disallow).toEqual(['/admin/']);
+    expect(googleBotParsed.allow).toEqual(['/']);
+    expect(googleBotParsed.crawlDelay).toBe(0.5);
+
+
+    const bingBotParsed = parsed.get('bingbot');
+    expect(bingBotParsed.disallow).toEqual(['/admin/']);
+    expect(bingBotParsed.allow).toEqual('/search/');
+    expect(bingBotParsed.crawlDelay).toBe(2);
+
 })
