@@ -32,7 +32,7 @@ async function crawlPage(baseURL,currentURL,pages, currentDepth = 0 ,maxDepth = 
         const response = await fetch(currentURL);
 
         if(response.status > 399) {
-            console.log(`error in fatch with status code: ${response.status} on page ${currentURL}`);
+            console.log(`error in fetch with status code: ${response.status} on page ${currentURL}`);
             return pages;
         }
 

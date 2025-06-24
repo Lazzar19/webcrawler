@@ -1,5 +1,4 @@
 
-const { timeStamp } = require("console");
 const { URL } = require("url");
 
 class RobotsHandler {
@@ -36,11 +35,11 @@ class RobotsHandler {
           signal: controller.signal,
         });
 
-        clearTimeout();
+        clearTimeout(timeout);
 
         if(response.status === 200) {
-          const data = response.text();
-          this.cache.set(robotsURL, {
+          const data = await response.text();
+          this.cache.set(baseURL, {
             content:data,
             timestamp: Date.now()
           });
@@ -149,7 +148,7 @@ class RobotsHandler {
   }
 
    getRulesFromAgent = (userAgent,parsedRobotsTxt) => {
-      const agents = parsedRobotsTxt.agents;
+      const agents = parsedRobotsTxt;
       const agentKey = userAgent.toLowerCase();  // GoogleBot == googlebot
 
       // looking for rules for that exact agent, for example googlebot
