@@ -1,5 +1,5 @@
-const {crawlPage} = require('./crawl.js');
-const {printReport} = require("./report.js")
+const {crawlPage} = require('./crawler/crawl.js');
+const {printReport} = require("./crawler/report.js")
 
 async function main() {
 

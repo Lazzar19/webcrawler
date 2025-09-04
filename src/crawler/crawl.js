@@ -1,6 +1,6 @@
 
 const {JSDOM} = require('jsdom');
-const pLimit = require('p-limit');
+const pLimit = require('p-limit').default;
 const limit = pLimit(5);
 
 async function crawlPage(baseURL,currentURL,pages, currentDepth = 0 ,maxDepth = 2, maxPages = Infinity ) {
