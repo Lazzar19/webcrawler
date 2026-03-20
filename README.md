@@ -50,14 +50,9 @@ npm install
 
 ### Run
 
-```bash
-npm start
-```
-
-or directly:
 
 ```bash
-node main.js
+node main.js <url>
 ```
 
 ### Tests
