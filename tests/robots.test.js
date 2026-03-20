@@ -1,4 +1,4 @@
-const { RobotsHandler } = require('./robots.js');
+const { RobotsHandler } = require('../src/crawler/robots.js');
 
 
 describe('fetchRobotsTxt', () => {
