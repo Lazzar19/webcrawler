@@ -1,6 +1,6 @@
 
 const {JSDOM} = require('jsdom');
-const pLimit = require('p-limit').default;
+const pLimit = require('p-limit');
 const limit = pLimit(5);
 
 async function crawlPage(baseURL,currentURL,pages, currentDepth = 0 ,maxDepth = 2, maxPages = Infinity ) {
@@ -17,15 +17,18 @@ async function crawlPage(baseURL,currentURL,pages, currentDepth = 0 ,maxDepth = 
         return pages;
     }
 
-    pages[normalizedCurrentURL] = 1;
-
-    if(Object.keys(pages).length >= maxPages) {
-        return pages;
-        }
         
     if(currentDepth >= maxDepth) {
         return pages;
     }
+
+
+    pages[normalizedCurrentURL] = 1;
+
+    if(Object.keys(pages).length >= maxPages)
+        return pages;
+
+    
 
     console.log(`crawling page: ${currentURL}`);
     try {
@@ -46,11 +49,10 @@ async function crawlPage(baseURL,currentURL,pages, currentDepth = 0 ,maxDepth = 
         const htmlBody =  await response.text();
         const nextURLs = getURLs(htmlBody,baseURL);
 
-        
-        const crawlPromises = nextURLs.map(url => {
-            limit(() => crawlPage(baseURL,url,pages,currentDepth + 1, maxDepth,maxPages))
-        });
-
+            
+        const crawlPromises = nextURLs.map(url =>
+            limit(() => crawlPage(baseURL, url, pages, currentDepth + 1, maxDepth, maxPages))
+        );
         await Promise.all(crawlPromises);
         
 
