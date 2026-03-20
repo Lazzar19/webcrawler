@@ -1,7 +1,38 @@
 const fs = require("fs");
 const path = require('path')
-const os = require('os')
+const os = require('os');
+const { get } = require("https");
 
+function getDesktopPath() {
+
+    const platform = os.platform();
+    const homeDir = os.homedir();
+
+    if(platform == "win32") {
+        return path.join(homeDir, "Desktop");
+    } else if(platform == "linux") {
+        const userDir = "/mnt/c/Users";
+
+        if(fs.existsSync(userDir)) {
+            const users = fs.readdirSync(userDir)
+            .filter(u => !['Public', 'Default', 'All Users', 'Default User'].includes(u));
+
+
+            for(const user of users) {
+                const oneDrive = path.join(userDir, user, 'OneDrive', 'Desktop');
+                const regularDesktop = path.join(userDir, user, 'Desktop');
+
+                if(fs.existsSync(oneDrive)) return oneDrive;
+                if(fs.existsSync(regularDesktop)) return regularDesktop;
+            }
+            
+            return path.join(homeDir, 'Desktop');
+        } else if(platform == 'darwin') {
+            return path.join(homeDir, 'Desktop');
+        }
+    }
+
+}
 
 function printReport(pages)
 {
@@ -37,15 +68,20 @@ function saveToCSV(pages) {
     }
 
     const csvContent = rows.map(row => row.map(escapeCsvValue).join(',')).join('\n');
-    const desktopPath = path.join(os.homedir(), 'Desktop', 'crawResults.csv');
 
-    //dir copy
-    fs.writeFileSync('crawResults.csv',csvContent);
+    const rawKey = Object.keys(pages)[0];
+    const fullURL = rawKey.startsWith('http') ? rawKey : `https://${rawKey}`;
+    const siteName = new URL(fullURL).hostname;
 
-    //desktop copy
-    fs.writeFileSync(desktopPath,csvContent);
+    const resultsDir = path.join(getDesktopPath(), 'Results');
 
-    console.log("\n Results saved in crawlResult.csv file\n");
+    if(!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir);
+
+    const outputPath = path.join(resultsDir, `${siteName}.csv`);
+    
+    fs.writeFileSync(outputPath, csvContent);
+
+    console.log(`\n Results saved in ${outputPath}\n`);
 
 }
 
